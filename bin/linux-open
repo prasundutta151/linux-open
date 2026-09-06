@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Open Linux files with sensible, user-friendly applications."""
+
+from __future__ import annotations
+
+import argparse
+import mimetypes
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from urllib.parse import urlparse
+
+VERSION = "1.0.0"
+
+TEX_EXTENSIONS = {".tex", ".ltx"}
+VIEWER_EXTENSIONS = {
+    ".pdf", ".eps", ".ps",
+    ".png", ".jpg", ".jpeg", ".jpe", ".gif", ".bmp", ".webp",
+    ".tif", ".tiff", ".svg", ".heic", ".avif", ".ico",
+}
+TEXT_EXTENSIONS = {
+    ".txt", ".text", ".md", ".rst", ".log", ".csv", ".tsv",
+    ".py", ".pyw", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp",
+    ".java", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".rb",
+    ".php", ".pl", ".pm", ".r", ".sh", ".bash", ".zsh", ".fish",
+    ".html", ".htm", ".css", ".scss", ".xml", ".json", ".jsonl",
+    ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".sql",
+    ".f", ".f90", ".f95", ".m", ".swift", ".kt", ".lua",
+    ".gitignore", ".dockerfile", ".makefile",
+}
+TEXT_BASENAMES = {
+    "makefile", "dockerfile", "readme", "license", "copying", "authors",
+    "changelog", "cmakelists.txt", ".bashrc", ".zshrc", ".profile",
+}
+
+
+def find_command(preferred: str, fallbacks: tuple[str, ...] = ()) -> str:
+    """Resolve an environment override, preferred app, or fallback command."""
+    for candidate in (preferred, *fallbacks):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    raise RuntimeError(f"No suitable application found (tried: {', '.join((preferred, *fallbacks))}).")
+
+
+def is_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https", "ftp", "mailto"}
+
+
+def is_probably_text(path: Path) -> bool:
+    """Recognize extensionless and unfamiliar ASCII/Unicode text files."""
+    mime, _ = mimetypes.guess_type(str(path))
+    if mime and (mime.startswith("text/") or mime in {"application/json", "application/xml"}):
+        return True
+    if not path.is_file():
+        return False
+    try:
+        sample = path.read_bytes()[:8192]
+    except OSError:
+        return False
+    if b"\0" in sample:
+        return False
+    try:
+        sample.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        printable = sum(byte in b"\n\r\t\b\f" or 32 <= byte < 127 for byte in sample)
+        return bool(sample) and printable / len(sample) > 0.85
+
+
+def select_application(target: str) -> tuple[str, str]:
+    """Return application command and routing category for a target."""
+    desktop_opener = os.environ.get("LINUX_OPEN_VIEWER", "xdg-open")
+    if is_url(target):
+        return find_command(desktop_opener, ("gio",)), "desktop"
+
+    path = Path(target).expanduser()
+    if path.is_dir():
+        return find_command(desktop_opener, ("gio",)), "desktop"
+
+    suffix = path.suffix.lower()
+    basename = path.name.lower()
+    if suffix in TEX_EXTENSIONS:
+        return find_command(os.environ.get("LINUX_OPEN_TEX_EDITOR", "texstudio"), ("kate", desktop_opener)), "tex"
+    if suffix in VIEWER_EXTENSIONS:
+        return find_command(desktop_opener, ("gio",)), "viewer"
+    if suffix in TEXT_EXTENSIONS or basename in TEXT_BASENAMES or is_probably_text(path):
+        return find_command(os.environ.get("LINUX_OPEN_TEXT_EDITOR", "kate"), ("gedit", "gnome-text-editor", desktop_opener)), "text"
+    return find_command(desktop_opener, ("gio",)), "desktop"
+
+
+def command_for(target: str) -> tuple[list[str], str]:
+    app, category = select_application(target)
+    argument = target if is_url(target) else str(Path(target).expanduser().resolve())
+    if Path(app).name == "gio":
+        return [app, "open", argument], category
+    return [app, argument], category
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="open",
+        description="Open TeX in TeXstudio, code/text in Kate, and documents/images in the desktop viewer.",
+    )
+    parser.add_argument("targets", nargs="+", help="Files, directories, or URLs to open.")
+    parser.add_argument("--dry-run", action="store_true", help="Print routing without opening applications.")
+    parser.add_argument("--wait", action="store_true", help="Wait until each launched application exits.")
+    parser.add_argument("--version", action="version", version=f"linux-open {VERSION}")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    exit_code = 0
+    for target in args.targets:
+        if not is_url(target) and not Path(target).expanduser().exists():
+            print(f"open: target does not exist: {target}", file=sys.stderr)
+            exit_code = 1
+            continue
+        try:
+            command, category = command_for(target)
+        except RuntimeError as exc:
+            print(f"open: {exc}", file=sys.stderr)
+            exit_code = 1
+            continue
+        if args.dry_run:
+            print(f"{category:7} {target} -> {shlex.join(command)}")
+            continue
+        if args.wait:
+            result = subprocess.run(command, check=False)
+            exit_code = result.returncode or exit_code
+        else:
+            subprocess.Popen(
+                command,
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
