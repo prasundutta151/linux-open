@@ -53,6 +53,37 @@ class RoutingTests(unittest.TestCase):
             command, category = module.command_for(str(path))
             self.assertEqual((Path(command[0]).name, category), ("xdg-open", "desktop"))
 
+    def test_missing_file_is_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "new-analysis.py"
+            usable, created = module.ensure_local_target(str(path))
+            self.assertTrue(usable)
+            self.assertTrue(created)
+            self.assertTrue(path.is_file())
+            self.assertEqual(path.read_bytes(), b"")
+
+    def test_missing_parent_is_not_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing" / "new.txt"
+            usable, created = module.ensure_local_target(str(path))
+            self.assertFalse(usable)
+            self.assertFalse(created)
+            self.assertFalse(path.exists())
+
+    def test_dry_run_does_not_create_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "preview.tex"
+            result = module.main(["--dry-run", str(path)])
+            self.assertEqual(result, 0)
+            self.assertFalse(path.exists())
+
+    def test_help_lists_dependencies(self):
+        help_text = module.build_parser().format_help()
+        self.assertIn("Dependencies by file type", help_text)
+        self.assertIn("texstudio", help_text)
+        self.assertIn("kate", help_text)
+        self.assertIn("xdg-utils", help_text)
+
 
 if __name__ == "__main__":
     unittest.main()

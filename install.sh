@@ -17,7 +17,7 @@ mkdir -p "$target_dir"
 install -m 0755 "$source_dir/bin/linux-open" "$target_dir/linux-open"
 ln -sfn "$target_dir/linux-open" "$target_dir/open"
 
-echo "linux-open 1.0.0 installed."
+echo "linux-open 1.1.0 installed."
 echo "  open       -> $target_dir/linux-open"
 echo "  linux-open -> $target_dir/linux-open"
 echo "Run 'hash -r' once if this terminal previously cached /usr/bin/open."

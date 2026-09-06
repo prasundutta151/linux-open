@@ -3,6 +3,9 @@
 `linux-open` provides a macOS-like `open` command for Linux with useful routing
 for scientific and programming work.
 
+When a requested local file does not exist, `linux-open` creates an empty file
+before opening it. It never creates missing parent directories.
+
 - `.tex` and `.ltx` open in **TeXstudio**.
 - Source code, text, configuration, Markdown, CSV and other ASCII/UTF-8 files
   open in **Kate**.
@@ -90,6 +93,8 @@ open notes.txt
 open figure.png
 open article.pdf
 open results.eps
+open new-analysis.py       # creates the file, then opens it in Kate
+open new-paper.tex         # creates the file, then opens it in TeXstudio
 open ~/Documents
 open https://www.overleaf.com
 ```
@@ -132,7 +137,7 @@ python3 -m unittest discover -s tests -v
 
 ## Version
 
-1.0.0
+1.1.0
 
 ## License
 
