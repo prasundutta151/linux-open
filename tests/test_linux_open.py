@@ -84,6 +84,9 @@ class RoutingTests(unittest.TestCase):
         self.assertIn("kate", help_text)
         self.assertIn("xdg-utils", help_text)
 
+    def test_current_version(self):
+        self.assertEqual(module.VERSION, "1.2.0")
+
 
 if __name__ == "__main__":
     unittest.main()

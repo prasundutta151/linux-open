@@ -74,12 +74,33 @@ or TeXstudio is unavailable.
 
 ## Install linux-open
 
+First inspect missing dependencies and command conflicts without changing the
+system:
+
+```bash
+./install.sh --check
+```
+
+Install only `linux-open` (missing optional applications are reported):
+
 ```bash
 git clone https://github.com/prasundutta151/linux-open.git
 cd linux-open
 ./install.sh
 hash -r
 ```
+
+Alternatively, install all missing dependencies through the detected Linux
+package manager and then install `linux-open`:
+
+```bash
+./install.sh --with-dependencies
+```
+
+This mode uses `sudo`, shows the package command, and—on APT systems—simulates
+the transaction first to report broken dependencies or proposed removals.
+The installer also reports conflicts with an existing `~/.local/bin/open`.
+Ubuntu's `/usr/bin/open` is an expected name overlap and is never modified.
 
 The installer places `linux-open` and `open` in `~/.local/bin`. It does not
 replace or delete Linux's `/usr/bin/open` command.
@@ -137,7 +158,7 @@ python3 -m unittest discover -s tests -v
 
 ## Version
 
-1.1.0
+1.2.0
 
 ## License
 
