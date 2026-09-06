@@ -9,8 +9,8 @@ before opening it. It never creates missing parent directories.
 - `.tex` and `.ltx` open in **TeXstudio**.
 - Source code, text, configuration, Markdown, CSV and other ASCII/UTF-8 files
   open in **Kate**.
-- PDF, EPS, PostScript, PNG, JPEG, SVG and other images open in the desktop's
-  configured viewer.
+- PDF, EPS and PostScript batches open together in the document viewer.
+- PNG, JPEG, SVG and other image batches open in one image-viewer gallery.
 - Directories, URLs and unknown binary files use `xdg-open`.
 
 ## Install required packages first
@@ -126,6 +126,16 @@ Open multiple targets:
 open paper.tex figure.png analysis.py
 ```
 
+Shell globs are supported. Compatible files are passed to one application so
+they appear as tabs or gallery items instead of separate processes:
+
+```bash
+open *.png       # one EOG window/gallery
+open *.py        # one Kate window with tabs
+open *.tex       # one TeXstudio window with tabs
+open *.pdf       # one document-viewer invocation
+```
+
 Check routing without opening windows:
 
 ```bash
@@ -140,6 +150,8 @@ Override preferred applications with environment variables:
 export LINUX_OPEN_TEX_EDITOR=texstudio
 export LINUX_OPEN_TEXT_EDITOR=kate
 export LINUX_OPEN_VIEWER=xdg-open
+export LINUX_OPEN_IMAGE_VIEWER=eog
+export LINUX_OPEN_DOCUMENT_VIEWER=evince
 ```
 
 ## Requirements summary
@@ -158,7 +170,7 @@ python3 -m unittest discover -s tests -v
 
 ## Version
 
-1.2.0
+1.3.0
 
 ## License
 

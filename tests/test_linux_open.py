@@ -18,6 +18,8 @@ class RoutingTests(unittest.TestCase):
             "texstudio": "/usr/bin/texstudio",
             "kate": "/usr/bin/kate",
             "xdg-open": "/usr/bin/xdg-open",
+            "eog": "/usr/bin/eog",
+            "evince": "/usr/bin/evince",
         }
         self.which = mock.patch.object(module.shutil, "which", side_effect=self.commands.get)
         self.which.start()
@@ -34,10 +36,14 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual((Path(command[0]).name, category), ("kate", "text"))
 
     def test_images_and_pdf_use_desktop_viewer(self):
-        for filename in ("plot.png", "photo.jpeg", "paper.pdf", "figure.eps"):
+        for filename in ("plot.png", "photo.jpeg"):
             command, category = module.command_for(filename)
-            self.assertEqual(Path(command[0]).name, "xdg-open")
-            self.assertEqual(category, "viewer")
+            self.assertEqual(Path(command[0]).name, "eog")
+            self.assertEqual(category, "image")
+        for filename in ("paper.pdf", "figure.eps"):
+            command, category = module.command_for(filename)
+            self.assertEqual(Path(command[0]).name, "evince")
+            self.assertEqual(category, "document")
 
     def test_extensionless_ascii_uses_kate(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -85,7 +91,23 @@ class RoutingTests(unittest.TestCase):
         self.assertIn("xdg-utils", help_text)
 
     def test_current_version(self):
-        self.assertEqual(module.VERSION, "1.2.0")
+        self.assertEqual(module.VERSION, "1.3.0")
+
+    def test_image_batch_uses_one_gallery_process(self):
+        groups = module.build_launch_groups(["one.png", "two.jpg", "three.jpeg"])
+        self.assertEqual(len(groups), 1)
+        command, category, arguments = groups[0]
+        self.assertEqual(command[:2], ["/usr/bin/eog", "--single-window"])
+        self.assertEqual(category, "image")
+        self.assertEqual(len(arguments), 3)
+
+    def test_code_batch_uses_one_kate_process(self):
+        groups = module.build_launch_groups(["one.py", "two.c", "three.txt"])
+        self.assertEqual(len(groups), 1)
+        command, category, arguments = groups[0]
+        self.assertEqual(command[0], "/usr/bin/kate")
+        self.assertEqual(category, "text")
+        self.assertEqual(len(arguments), 3)
 
 
 if __name__ == "__main__":

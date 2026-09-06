@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="1.2.0"
+version="1.3.0"
 source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target_dir="${HOME}/.local/bin"
 with_dependencies=0
@@ -10,7 +10,7 @@ force=0
 
 usage() {
     cat <<'EOF'
-linux-open installer 1.2.0
+linux-open installer 1.3.0
 
 Usage:
   ./install.sh                     Check dependencies and install linux-open
